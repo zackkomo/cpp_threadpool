@@ -14,6 +14,8 @@ void threadPool::threadLoop() {
         {
             // aquire a lock on the mutex
             std::unique_lock<std::mutex> l(m_);
+            // declare not busy
+            cnt_busy_ -= 1;
             // wait until woken up AND (there are jobs to complete or called to die)
             cv_.wait(l, [this] {
                 return !queue_.empty() || terminate_;
@@ -21,6 +23,7 @@ void threadPool::threadLoop() {
             if (terminate_) {
                 return;
             }
+            cnt_busy_ += 1;
             job = queue_.front();
             queue_.pop();
         }
@@ -49,11 +52,19 @@ void threadPool::add_job(const std::function<void()>& job) {
  * @brief Checks if the queue of jobs is empty or not.
  * 
  */
-bool threadPool::busy() {
-    bool poolbusy;
+bool threadPool::is_queue_empty() {
+    bool queueEmpty;
     {
         std::unique_lock<std::mutex> l(m_);
-        poolbusy = queue_.empty();
+        queueEmpty = queue_.empty();
     }
-    return !poolbusy;
+    return queueEmpty;
+}
+
+/**
+ * @brief Checks if any of the threads in the pool are still working.
+ *
+ */
+bool threadPool::pool_busy() {
+    return cnt_busy_.load() > 0;
 }

@@ -1,6 +1,5 @@
 #ifndef THREAD_POOL_H
 #define THREAD_POOL_H
-#include <iostream>
 #include <thread>
 #include <vector>
 #include <mutex>
@@ -8,8 +7,6 @@
 #include <queue>
 #include <functional>
 #include <atomic>
-#include <memory>
-#include <chrono>
 
 class threadPool {
 public:
@@ -21,6 +18,7 @@ public:
      */
     threadPool(size_t num_threads){
         pool_.resize(num_threads);
+        cnt_busy_ = (int)num_threads;
         for (uint32_t i = 0; i < num_threads; i++) {
             // each thread will run threadLoop function
             pool_.at(i) = std::thread(&threadPool::threadLoop,this);
@@ -61,16 +59,25 @@ public:
     }
 
     void add_job(const std::function<void()>& job);
-    bool busy();
+    bool is_queue_empty();
+    bool pool_busy();
+    int jobs_in_queue(){
+        std::unique_lock<std::mutex> l{m_};
+        return queue_.size();
+    }
+    int threads_busy(){
+        return cnt_busy_.load();
+    }
 
 private:
     void threadLoop();
 
-    bool terminate_ = false;           // Tells threads to stop looking for jobs
-    std::mutex m_;                  // Prevents data races to the job queue
-    std::condition_variable cv_; // Allows threads to wait on new jobs or termination 
-    std::vector<std::thread> pool_;
-    std::queue<std::function<void()>> queue_;
+    bool terminate_ = false;                  // Tells threads to stop looking for jobs
+    std::mutex m_;                            // Prevents data races to the job queue
+    std::condition_variable cv_;              // Allows threads to wait on new jobs or termination 
+    std::vector<std::thread> pool_;           // A pool to hold all threads
+    std::queue<std::function<void()>> queue_; // A queue to hold incoming jobs
+    std::atomic<int> cnt_busy_;               // A counter to keep track of sleeping/active threads
 };
 
 #endif

@@ -21,10 +21,10 @@ int main (int argc, char *argv[]) {
     //---------------------How to use thread pool----------------------//
     //-----------------------------------------------------------------//
     /* Test params */
-    int N = 5000; // # of jobs
+    int N = 1000000; // # of jobs
     double  data[N];
     /* # threads in pool */
-    threadPool pool{500};
+    threadPool pool{1};
 
     for(int i=0; i<N; i++){
         data[i] = i;
@@ -32,8 +32,18 @@ int main (int argc, char *argv[]) {
         pool.add_job([&var]() {somefunction(var,2.0);});
     }
     // Wait for all tasks to complete before continuing if you want.
-    while(pool.busy()){
-        std::cout << "Waiting.." << std::endl;
+    while(!pool.is_queue_empty() || pool.pool_busy()){
+        std::cout << "\rWaiting.. " << N-pool.jobs_in_queue()+pool.threads_busy() << "/" << N << " jobs done         ";
+        std::cout.flush();
     };
+    std::cout << "\rWaiting.. " << N-pool.jobs_in_queue()+pool.threads_busy() << "/" << N << " jobs done" << std::endl;
+    
     std::cout << "Done.." << std::endl;
+
+
+    //-----------------------------------------------------------------//
+    //---------------------How to use sync future----------------------//
+    //-----------------------------------------------------------------//
+
+    return 0;
 }
